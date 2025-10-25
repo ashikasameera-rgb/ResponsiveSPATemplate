@@ -1,0 +1,38 @@
+services:
+  customerreg-db:
+    image: mysql:8.0
+    container_name: customerreg-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: customerDB
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  customerreg-app:
+    build: .
+    container_name: customerreg-app
+    restart: on-failure
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DefaultConnection=server=customerreg-db;port=3306;database=customerDB;user=appuser;password=apppassword;
+      - ASPNETCORE_URLS=http://+:8080   # Listen on container port 8080
+    depends_on:
+      customerreg-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    working_dir: /app
+
+volumes:
+  db_data:
